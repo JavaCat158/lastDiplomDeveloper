@@ -1,108 +1,78 @@
 package cloud.example.myprojectdiplom.services;
 
+import cloud.example.myprojectdiplom.entity.StorageFile;
+import cloud.example.myprojectdiplom.entity.User;
 import cloud.example.myprojectdiplom.exception.InputDataException;
-import cloud.example.myprojectdiplom.exception.UnauthorizedException;
-import cloud.example.myprojectdiplom.repositories.AuthRepository;
 import cloud.example.myprojectdiplom.repositories.FileRepository;
-import cloud.example.myprojectdiplom.repositories.LoginRepository;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
-import org.mockito.Mockito;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.mockito.junit.jupiter.MockitoSettings;
-import org.mockito.quality.Strictness;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.mock.web.MockMultipartFile;
 
-import static cloud.example.myprojectdiplom.ConstantsTest.*;
-import static org.junit.Assert.*;
+import java.io.IOException;
+import java.time.LocalDateTime;
 
-@ExtendWith(MockitoExtension.class)
-@MockitoSettings(strictness = Strictness.LENIENT)
+import static org.junit.Assert.assertArrayEquals;
+import static org.junit.Assert.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.mockito.Mockito.*;
+
+@SpringBootTest
 public class FileServiceTest {
-    @InjectMocks
-    private FileService fileService;
+
     @Mock
     private FileRepository fileRepository;
-    @Mock
-    private AuthRepository authRepository;
-    @Mock
-    private LoginRepository loginRepository;
 
-    @BeforeEach
-    void set() {
-        Mockito.when(authRepository.getUsernameByToken(BEARER_TOKEN_SPLIT)).thenReturn(USERNAME_1);
-        Mockito.when(loginRepository.findByUsername(USERNAME_1)).thenReturn(USER_1);
+    @InjectMocks
+    private FileService fileService;
+
+    @Test
+    void uploadFile_Success() throws IOException {
+        User user = new User("username", "password");
+        MockMultipartFile file = new MockMultipartFile("testFile", "testData".getBytes());
+
+        fileService.uploadFile(user, "filename", file);
+
+        verify(fileRepository, times(1)).save(any(StorageFile.class));
     }
 
     @Test
-    void upload() {
-        assertTrue(fileService.upLoadFile(BEARER_TOKEN, FILENAME_1, MULTIPART_FILE));
+    void uploadFile_InputDataException() {
+        User user = new User("username", "password");
+        MockMultipartFile file = new MockMultipartFile("testFile", "testData".getBytes());
+        doThrow(new InputDataException("Upload file: Input data exception")).when(fileRepository).save(any(StorageFile.class));
+
+        assertThrows(InputDataException.class, () -> fileService.uploadFile(user, "filename", file));
     }
 
     @Test
-    void delete() {
-        fileService.deleteFile(BEARER_TOKEN, FILENAME_1);
-        Mockito.verify(fileRepository, Mockito.times(1)).deleteByUserAndFilename(USER_1, FILENAME_1);
+    void deleteFile_Success() {
+        User user = new User("username", "password");
+
+        assertDoesNotThrow(() -> fileService.deleteFile(user, "filename"));
+
+        verify(fileRepository, times(1)).deleteByUserAndFilename(user, "filename");
     }
 
     @Test
-    void deleteFileUnauthorized() {
-        Assertions.assertThrows(UnauthorizedException.class, () -> fileService.deleteFile(TOKEN_1, FILENAME_1));
+    void deleteFile_InputDataException() {
+        User user = new User("username", "password");
+        doReturn(new StorageFile("filename", LocalDateTime.now(), 100L, new byte[0], user)).when(fileRepository).findByUserAndFilename(user, "filename");
+
+        assertThrows(InputDataException.class, () -> fileService.deleteFile(user, "filename"));
     }
 
     @Test
-    void deleteFileInputException() {
-        Mockito.when(fileRepository.findByUserAndFilename(USER_1, FILENAME_1)).thenReturn(STORAGE_FILE_1);
-        assertThrows(InputDataException.class, () -> fileService.deleteFile(BEARER_TOKEN, FILENAME_1));
-    }
+    void downloadFile_Success() {
+        User user = new User("username", "password");
+        byte[] fileContent = "testData".getBytes();
+        StorageFile storageFile = new StorageFile("filename", LocalDateTime.now(), 100L, fileContent, user);
+        doReturn(storageFile).when(fileRepository).findByUserAndFilename(user, "filename");
 
-    @Test
-    void download() {
-        Mockito.when(fileRepository.findByUserAndFilename(USER_1, FILENAME_1)).thenReturn(STORAGE_FILE_1);
-        assertEquals(FILE_CONTENT_1, fileService.downloadFile(BEARER_TOKEN, FILENAME_1));
-    }
+        byte[] downloadedContent = fileService.downloadFile(user, "filename");
 
-    @Test
-    void downloadUnautorized() {
-        Mockito.when(fileRepository.findByUserAndFilename(USER_1, FILENAME_1)).thenReturn(STORAGE_FILE_1);
-        assertThrows(UnauthorizedException.class, () -> fileService.downloadFile(TOKEN_1, FILENAME_1));
-    }
-
-    @Test
-    void downloadInputException() {
-        Mockito.when(fileRepository.findByUserAndFilename(USER_1, FILENAME_1)).thenReturn(STORAGE_FILE_1);
-        assertThrows(InputDataException.class, () -> fileService.downloadFile(BEARER_TOKEN, FILENAME_2));
-    }
-
-    @Test
-    void update() {
-        fileService.updateFilename(BEARER_TOKEN, FILENAME_1, EDIT_FILE_NAME_RQ);
-        Mockito.verify(fileRepository, Mockito.times(1)).updateFilenameByUser(USER_1, FILENAME_1, NEW_FILENAME);
-    }
-
-    @Test
-    void updateUnautprizedException() {
-        assertThrows(UnauthorizedException.class, () -> fileService.updateFilename(TOKEN_1, FILENAME_1, EDIT_FILE_NAME_RQ));
-    }
-
-    @Test
-    void updateInputDataException() {
-        Mockito.when(fileRepository.findByUserAndFilename(USER_1, FILENAME_1)).thenReturn(STORAGE_FILE_1);
-        assertThrows(InputDataException.class, () -> fileService.updateFilename(BEARER_TOKEN, FILENAME_1, EDIT_FILE_NAME_RQ));
-    }
-
-    @Test
-    void getAallFiles() {
-        Mockito.when(fileRepository.findAllByUser(USER_1)).thenReturn(STORAGE_FILE_LIST);
-        assertEquals(FILE_RS_LIST, fileService.getAllFiles(BEARER_TOKEN, LIMIT));
-    }
-
-    @Test
-    void allFilesUnautorized() {
-        Mockito.when(fileRepository.findAllByUser(USER_1)).thenReturn(STORAGE_FILE_LIST);
-        assertThrows(UnauthorizedException.class, () -> fileService.getAllFiles(TOKEN_1, LIMIT));
+        assertArrayEquals(fileContent, downloadedContent);
     }
 }

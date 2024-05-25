@@ -1,13 +1,12 @@
 package cloud.example.myprojectdiplom.entity;
 
-import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import javax.persistence.*;
 import java.time.LocalDateTime;
 
-@AllArgsConstructor
+
 @NoArgsConstructor
 @Data
 @Entity
@@ -31,4 +30,16 @@ public class StorageFile {
     @ManyToOne
     @JoinColumn(name = "username")
     private User user;
+
+    public StorageFile(User user, String test) {
+        this.user = user;
+    }
+
+    public StorageFile(String filename, LocalDateTime date, long size, byte[] fileContent, User user) {
+        this.filename = filename;
+        this.date = date;
+        this.size = size;
+        this.fileContent = fileContent;
+        this.user = user;
+    }
 }

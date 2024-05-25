@@ -2,11 +2,8 @@ package cloud.example.myprojectdiplom.services;
 
 import cloud.example.myprojectdiplom.entity.StorageFile;
 import cloud.example.myprojectdiplom.entity.User;
-import cloud.example.myprojectdiplom.exception.DeleteFileException;
 import cloud.example.myprojectdiplom.exception.InputDataException;
-import cloud.example.myprojectdiplom.exception.UnauthorizedException;
 import cloud.example.myprojectdiplom.models.request.FileDataApply;
-import cloud.example.myprojectdiplom.models.response.FileJsonName;
 import cloud.example.myprojectdiplom.repositories.AuthRepository;
 import cloud.example.myprojectdiplom.repositories.FileRepository;
 import cloud.example.myprojectdiplom.repositories.LoginRepository;
@@ -19,111 +16,59 @@ import javax.transaction.Transactional;
 import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.Collectors;
 
 @Service
 @AllArgsConstructor
 @Slf4j
 public class FileService {
-    private FileRepository fileRepository;
-    private AuthRepository authRepository;
-    private LoginRepository loginRepository;
+    private final FileRepository fileRepository;
+    private final AuthRepository authRepository;
+    private final LoginRepository loginRepository;
 
-    // Загрузка файла
-    public boolean upLoadFile(String token, String filename, MultipartFile file) {
-        final User user = getAuthToken(token);
-        if (user == null) {
-            log.error("Upload file: Unautorized");
-            throw new UnauthorizedException("Uoload file: Unautorized");
-        }
-
+    public void uploadFile(User user, String filename, MultipartFile file) {
         try {
             fileRepository.save(new StorageFile(filename, LocalDateTime.now(), file.getSize(), file.getBytes(), user));
-            log.info("Success upload file. user {}", user.getUsername());
-            return true;
+            log.info("Successfully uploaded file. User: {}", user.getUsername());
         } catch (IOException e) {
             log.error("Upload file: Input data exception");
             throw new InputDataException("Upload file: Input data exception");
         }
     }
 
-    // Удаление файла
     @Transactional
-    public void deleteFile(String token, String filename) {
-        final User user = getAuthToken(token);
-        if (user == null) {
-            log.error("Delete file : Unautorized");
-            throw new UnauthorizedException("Delete file: Unautorized");
-        }
-
+    public void deleteFile(User user, String filename) {
         fileRepository.deleteByUserAndFilename(user, filename);
-
-        final StorageFile storageFile = fileRepository.findByUserAndFilename(user, filename);
+        StorageFile storageFile = fileRepository.findByUserAndFilename(user, filename);
         if (storageFile != null) {
             log.error("Delete file: Input data exception");
             throw new InputDataException("Input data exception");
         }
-        log.info("Success delete file. User {}", user.getUsername());
+        log.info("Successfully deleted file. User: {}", user.getUsername());
     }
 
-    public byte[] downloadFile(String authToken, String filename) {
-        User user = getAuthToken(authToken);
-        userIsNull(user);
-
-        final StorageFile storageFile = fileRepository.findByUserAndFilename(user, filename);
+    public byte[] downloadFile(User user, String filename) {
+        StorageFile storageFile = fileRepository.findByUserAndFilename(user, filename);
         if (storageFile == null) {
             log.error("Download file: Input data exception");
             throw new InputDataException("Download file: Input data exception");
         }
-        log.info("Download file: User {}", user.getUsername());
+        log.info("Downloaded file. User: {}", user.getUsername());
         return storageFile.getFileContent();
     }
 
     @Transactional
-    public void updateFilename(String authToken, String filename, FileDataApply fileDataApply) {
-        final User user = getAuthToken(authToken);
-        userIsNull(user);
-
+    public void updateFilename(User user, String filename, FileDataApply fileDataApply) {
         fileRepository.updateFilenameByUser(user, filename, fileDataApply.getFilename());
-
-        storageFileisNull(user, filename);
-
-        log.info("Success put file name. User {}", user.getUsername());
-    }
-
-
-    public List<FileJsonName> getAllFiles(String authToken, Integer limit) {
-        final User user = getAuthToken(authToken);
-        userIsNull(user);
-
-        log.info("Success get all files. USer {}", user.getUsername());
-
-        return fileRepository.findAllByUser(user).stream()
-                .map(o -> new FileJsonName(o.getFilename(), o.getSize()))
-                .collect(Collectors.toList());
-    }
-
-    private boolean storageFileisNull(User user, String filename) {
-        StorageFile storageFile = fileRepository.findByUserAndFilename(user ,filename);
+        StorageFile storageFile = fileRepository.findByUserAndFilename(user, filename);
         if (storageFile != null) {
             log.error("ERROR: Input data exception");
             throw new InputDataException("ERROR: Input data exception");
         }
-        return true;
+        log.info("Successfully updated file name. User: {}", user.getUsername());
     }
-    private User getAuthToken(String token) {
-        if (token.startsWith("Bearer ")) {
-            final String authTokenBearer = token.split(" ")[1];
-            final String username = authRepository.getUsernameByToken(authTokenBearer);
-            return loginRepository.findByUsername(username);
-        }
-        return null;
+
+    public List<StorageFile> getAllFiles(User user, Integer limit) {
+        log.info("Successfully fetched all files. User: {}", user.getUsername());
+        return fileRepository.findAllByUser(user);
     }
-    private boolean userIsNull(User user) {
-        if (user == null) {
-            log.error("User is Unautorized");
-            throw new UnauthorizedException("User is Unautorized");
-        }
-        return true;
-        }
-    }
+}

@@ -1,9 +1,11 @@
 package cloud.example.myprojectdiplom.services;
 
+import cloud.example.myprojectdiplom.entity.User;
 import cloud.example.myprojectdiplom.jwt.UtilJwt;
 import cloud.example.myprojectdiplom.models.response.GetToken;
 import cloud.example.myprojectdiplom.models.request.LoginAuth;
 import cloud.example.myprojectdiplom.repositories.AuthRepository;
+import cloud.example.myprojectdiplom.repositories.LoginRepository;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -19,6 +21,7 @@ public class AuthService {
     private AuthenticationManager authManager;
     private UtilJwt utilJwt;
     private UserService userService;
+    private final LoginRepository loginRepository;
 
     public GetToken login(LoginAuth loginAuth) {
         final String username = loginAuth.getLogin();
@@ -40,5 +43,14 @@ public class AuthService {
         final String username = authRepository.getUsernameByToken(usertoken);
         log.info("User {} logout, JWT is disabled", username);
         authRepository.removeTokenAndUsername(token);
+    }
+
+    public User getUserFromToken(String token) {
+        if (token.startsWith("Bearer ")) {
+            String authTokenBearer = token.split(" ")[1];
+            String username = authRepository.getUsernameByToken(authTokenBearer);
+            return loginRepository.findByUsername(username);
+        }
+        return null;
     }
 }

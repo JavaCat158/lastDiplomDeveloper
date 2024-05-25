@@ -1,23 +1,11 @@
 package cloud.example.myprojectdiplom.repositories;
 
-import cloud.example.myprojectdiplom.entity.User;
-import cloud.example.myprojectdiplom.jwt.UtilJwt;
-import cloud.example.myprojectdiplom.models.request.FileDataApply;
-import cloud.example.myprojectdiplom.models.request.LoginAuth;
-import cloud.example.myprojectdiplom.models.response.GetToken;
-import cloud.example.myprojectdiplom.services.AuthService;
-import cloud.example.myprojectdiplom.services.UserService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.Mockito;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
-import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -49,7 +37,7 @@ public class AuthRepositoryTest {
     }
 
     @Test
-    void removeToken(){
+    void removeToken() {
         String before = authRepository.getUsernameByToken("token1");
         assertNotNull(before);
         authRepository.removeTokenAndUsername("token1");
